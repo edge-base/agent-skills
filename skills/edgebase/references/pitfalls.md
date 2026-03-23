@@ -6,16 +6,16 @@ A collection of common mistakes and solutions when developing EdgeBase apps.
 
 ## 1. onSnapshot only broadcasts for authenticated SDK requests
 
-When `release: false`, unauthenticated direct `fetch()` calls for insert/update go through the D1 path, which does not broadcast to `DatabaseLiveDO`. Only authenticated SDK requests go through the `DatabaseDO` (Durable Object SQLite) path, which properly broadcasts changes.
+When `release: false`, unauthenticated direct `fetch()` calls for insert/update may not trigger `onSnapshot` broadcasts. Always use the authenticated SDK for writes when real-time subscriptions are needed.
 
 ### Symptoms
 - `onSnapshot` subscription succeeds (WebSocket connected, `subscribed` message received)
-- No `db_change` events arrive when data is modified
+- No `db_change` events arrive when data is modified via direct `fetch()`
 - `getList()` and other HTTP requests work fine
 
 ### Cause
-- Unauthenticated request → D1 path → `executionCtx.waitUntil()` broadcast is silently dropped
-- Authenticated request → DO SQLite path → `this.ctx.waitUntil()` runs properly inside the DO
+- Unauthenticated requests bypass the normal write pipeline that triggers `DatabaseLiveDO` broadcasts
+- Authenticated SDK requests go through the proper write path with guaranteed broadcast delivery
 
 ### Solution
 ```typescript
